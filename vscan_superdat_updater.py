@@ -25,19 +25,21 @@ import logging
 import optparse
 import os
 import re
+import shutil
 import sys
 import tempfile
 import types
 
-
 VERSIONSTRING = "0.1dev"
+sdatPattern = "(sdat\d{4}\.exe)"
 sdatFile = ""
+tmpFile = (0, "")
 
 
 def findFtpSdatFile(text):
     '''Tries to find the filename of a sdat file in ftp server answer to LIST
     command and stores it in global variable SdatFile'''
-    result = re.search("(sdat\d{4}\.exe)", text )
+    result = re.search(sdatPattern, text )
     if type(result) != types.NoneType and len(result.groups()) == 1:
 	# @todo: How can filename be passed back without use of global variables?
 	global sdatFile
@@ -45,10 +47,17 @@ def findFtpSdatFile(text):
     return
 
 
+def writeFtpFile(buffer):
+    '''Callback function for writing ftp data into file'''
+    # @todo: How can filedescriptor be passed without use of global variables?
+    global tmpFile
+    os.write(tmpFile[0], buffer)
+
+
+
 ########### MAIN PROGRAM #############
 def main():
-
-    sdatSize = -1
+    global sdatFile
     ftpServer = "ftp.nai.com"
 
     parser = optparse.OptionParser(
@@ -63,6 +72,9 @@ def main():
     parser.add_option("-d", "--debuglevel", dest="debuglevel",
 	    type="int", default=logging.WARNING,
 	    help="Sets numerical debug level, see library logging module. Default is 30 (WARNING). Possible values are CRITICAL 50, ERROR 40, WARNING 30, INFO 20, DEBUG 10, NOTSET 0. All log messages with debuglevel or above are printed. So to disable all output set debuglevel e.g. to 100.")
+    parser.add_option("-k", "--keep", dest="keep",
+	    type="int", default=2,
+	    help="Maximum nr of sdat files to keep locally after download. Default is 2")
     parser.add_option("-t", "--testmode", dest="testmode",
 	    default=False, action="store_true",
 	    help="Run in test mode. Instead of using ftp.nai.com localhost will be used")
@@ -75,7 +87,11 @@ def main():
 	parser.print_help()
 	sys.exit(2)
 
+    if options.keep <= 0:
+	logging.error("Please provice only reasonable values for --keep option")
+	sys.exit(1)
 
+    
     dirName = os.path.expanduser(args[0])
     if not os.path.isdir(dirName):
 	logging.error("directory not found")
@@ -90,6 +106,7 @@ def main():
     except:
 	logging.error("directory cannot be acccessed")
 	sys.exit(1)
+
 
     if options.testmode:
 	ftpServer = "localhost"
@@ -145,10 +162,55 @@ def main():
 
 
     # mkstemp() returns a tuple containing an OS-level handle to an open file (as would be returned by os.open()) and the absolute pathname of that file, in that order. New in version 2.3.
+    global tmpFile
     tmpFile = tempfile.mkstemp("", "vscan_superdat_updater")
+
+    logging.info("Downloading...")
+    try:
+	ftp.retrbinary('RETR %s' % sdatFile, writeFtpFile)
+    except:
+	logging.error("Not possible to download file from ftp server. Aborting.")
+	sys.exit(1)
     os.close(tmpFile[0])
     ftp.quit()
+    logging.info("Download ended.")
 
+    if os.path.getsize(tmpFile[1]) != sdatFileSize :
+	logging.error("Downloaded sdat file doesn't has correct size, aborting")
+	sys.exit(1)
+    
+    targetFile = os.path.join(dirName, sdatFile)
+
+    try:
+	shutil.move(tmpFile[1], targetFile)
+    except:
+	logging.error("Temporary downloaded sdat %s cannot be moved to target %s. Aborting" % (tmpFile[1], targetFile))
+	sys.exit(1)
+
+    localFiles = []
+    try:
+	for entry in os.listdir(dirName):
+	    path = os.path.join(dirName, entry)
+	    if os.path.isfile(path):
+		result = re.search(sdatPattern, entry )
+		if type(result) != types.NoneType and len(result.groups()) == 1:
+		    sdatFile = result.groups()[0]
+		    localFiles.append(result.groups()[0])
+    except:
+	logging.error("directory cannot be acccessed")
+	sys.exit(1)
+
+    if len(localFiles) > options.keep:
+	localFiles.sort()
+	i = 0
+	while len(localFiles) - i > options.keep:
+	    path = os.path.join(dirName, localFiles[i])
+	    try:
+		logging.info("Removing file %s" % path)
+		os.unlink(path)
+	    except:
+		logging.error("File %s could not be removed" % path)
+	    i = i + 1
 
 
 if __name__ == "__main__":

@@ -2,3 +2,4 @@
  * Add timeout for ftp server response / minimal data transfer rate, so that
    subsequent regular calls of script cannot interfere with each other.
  * Define exit codes
+ * Proxy support
