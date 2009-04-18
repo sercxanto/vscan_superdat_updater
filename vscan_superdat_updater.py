@@ -30,7 +30,7 @@ import sys
 import tempfile
 import types
 
-VERSIONSTRING = "0.1dev"
+VERSIONSTRING = "0.1"
 sdatPattern = "(sdat\d{4}\.exe)"
 sdatFile = ""
 tmpFile = (0, "")
