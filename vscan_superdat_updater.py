@@ -26,6 +26,7 @@ import optparse
 import os
 import re
 import shutil
+import stat
 import sys
 import tempfile
 import types
@@ -183,6 +184,7 @@ def main():
 
     try:
 	shutil.move(tmpFile[1], targetFile)
+	os.chmod(targetFile, stat.S_IRUSR +stat.S_IWUSR + stat.S_IRGRP + stat.S_IROTH)
     except:
 	logging.error("Temporary downloaded sdat %s cannot be moved to target %s. Aborting" % (tmpFile[1], targetFile))
 	sys.exit(1)
