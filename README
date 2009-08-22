@@ -1,0 +1,11 @@
+vscan_superdat_updater.py
+
+This python script can be used to regulary download McAfee's superdat exe files
+to local filesystem which can e.g. be exported via a samba share. Windows
+clients can then call vscan_startLatestSuperdat.bat to start the latest
+superdat installer.
+
+The inteted use is in an situation where for some reason the internal automatic
+update of McAfee version 8 does not work any more.
+
+For more information see vscan_superdat_updater.py --help
