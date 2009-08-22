@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-#    cleanup_old_files.py
+#    vscan_superdat_updater.py
 #
 #    Downloads McAfee's superdat exe update installer
 #
